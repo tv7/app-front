@@ -24,30 +24,36 @@
   <pre id="response">Response will appear here...</pre>
 
   <script>
-    async function sendMessage() {
-      const userInput = document.getElementById('userInput').value;
-      const responseBox = document.getElementById('response');
-      if (!userInput) return alert("Enter a message first.");
+   async function sendMessage() {
+  const userInput = document.getElementById('userInput').value;
+  const responseBox = document.getElementById('response');
+  if (!userInput) return alert("Enter a message first.");
 
-      responseBox.textContent = "Thinking...";
+  responseBox.textContent = "Thinking...";
 
-      try {
-          fetch('https://app-openaiapikey.up.railway.app/api/chat', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ prompt: userInput }),
-})
-        });
-        const data = await res.json();
-        if (data.choices && data.choices.length > 0) {
-          responseBox.textContent = data.choices[0].message.content;
-        } else {
-          responseBox.textContent = "No response from API.";
-        }
-      } catch (err) {
-        responseBox.textContent = "❌ Error: " + err.message;
-      }
+  try {
+    const res = await fetch('https://app-openaiapikey.up.railway.app/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: userInput }),
+    });
+
+    if (!res.ok) throw new Error("HTTP " + res.status);
+
+    const data = await res.json();
+
+    if (data.choices && data.choices.length > 0) {
+      responseBox.textContent = data.choices[0].message.content;
+    } else if (data.error) {
+      responseBox.textContent = "API error: " + data.error.message || data.error;
+    } else {
+      responseBox.textContent = "No response from API.";
     }
+  } catch (err) {
+    responseBox.textContent = "❌ Error: " + err.message;
+  }
+}
+
 
     function startVoiceInput() {
       const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
