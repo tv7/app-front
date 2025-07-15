@@ -32,10 +32,11 @@
       responseBox.textContent = "Thinking...";
 
       try {
-          const res = await fetch('https://app-openaiapikey.up.railway.app/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: userInput }),
+          fetch('https://app-openaiapikey.up.railway.app/api/chat', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ prompt: userInput }),
+})
         });
         const data = await res.json();
         if (data.choices && data.choices.length > 0) {
