@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lexroid Chat</title>
+  <style>
+    body { font-family: sans-serif; background-color: #121212; color: #f0f0f0; padding: 1rem; max-width: 600px; margin: auto; }
+    h1 { color: #f49424; }
+    textarea { width: 100%; height: 100px; background: #1e1e1e; color: white; border: 1px solid #547cc4; padding: 0.5rem; border-radius: 8px; }
+    button { margin-top: 0.5rem; padding: 0.7rem 1.5rem; background: #547cc4; border: none; color: white; border-radius: 8px; cursor: pointer; }
+    #controls { display: flex; gap: 1rem; flex-wrap: wrap; }
+    pre { background: #1e1e1e; padding: 1rem; border-radius: 8px; border: 1px solid #333; white-space: pre-wrap; word-wrap: break-word; }
+    .mic-button { background-color: #f49424; }
+  </style>
+</head>
+<body>
+  <h1>Lexroid Chat</h1>
+  <textarea id="userInput" placeholder="Ask Lexroid anything..."></textarea>
+  <div id="controls">
+    <button onclick="sendMessage()">Send</button>
+    <button class="mic-button" onclick="startVoiceInput()">🎤 Voice</button>
+  </div>
+  <pre id="response">Response will appear here...</pre>
+
+  <script>
+    async function sendMessage() {
+      const userInput = document.getElementById('userInput').value;
+      const responseBox = document.getElementById('response');
+      if (!userInput) return alert("Enter a message first.");
+
+      responseBox.textContent = "Thinking...";
+
+      try {
+          const res = await fetch('app-openaiapikey.up.railway.app', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: userInput }),
+        });
+        const data = await res.json();
+        if (data.choices && data.choices.length > 0) {
+          responseBox.textContent = data.choices[0].message.content;
+        } else {
+          responseBox.textContent = "No response from API.";
+        }
+      } catch (err) {
+        responseBox.textContent = "❌ Error: " + err.message;
+      }
+    }
+
+    function startVoiceInput() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) return alert("Voice input not supported.");
+      const recognition = new SpeechRecognition();
+      recognition.lang = 'en-US';
+      recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
+      recognition.start();
+      recognition.onresult = e => {
+        const transcript = e.results[0][0].transcript;
+        const textarea = document.getElementById('userInput');
+        textarea.value += (textarea.value ? ' ' : '') + transcript;
+      };
+      recognition.onerror = e => alert("Voice input error: " + e.error);
+    }
+  </script>
+</body>
+</html>
