@@ -39,79 +39,87 @@
   </div>
 
   <script>
-    const supabase = window.supabase.createClient(
-      "https://tuiozcdkswktotyyuhwu.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1aHd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
-    );
+    window.addEventListener("DOMContentLoaded", function () {
+      const supabase = window.supabase.createClient(
+        "https://tuiozcdkswktotyyuhwu.supabase.co",
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1aHd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
+      );
 
-    const backendURL = "https://app-openaiapikey.up.railway.app/api/chat";
-    const chatbox = document.getElementById("chatbox");
+      const backendURL = "https://app-openaiapikey.up.railway.app/api/chat";
+      const chatbox = document.getElementById("chatbox");
 
-    async function login() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      async function login() {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (error) {
-        const { error: signupError } = await supabase.auth.signUp({ email, password });
-        if (signupError) return alert(signupError.message);
-        alert("Account created. Now log in.");
-      } else {
-        showChat();
+        if (error) {
+          const { error: signupError } = await supabase.auth.signUp({ email, password });
+          if (signupError) return alert(signupError.message);
+          alert("Account created. Now log in.");
+        } else {
+          showChat();
+        }
       }
-    }
 
-    async function logout() {
-      await supabase.auth.signOut();
-      document.getElementById("chat").style.display = "none";
-      document.getElementById("auth").style.display = "block";
-    }
+      async function logout() {
+        await supabase.auth.signOut();
+        document.getElementById("chat").style.display = "none";
+        document.getElementById("auth").style.display = "block";
+      }
 
-    async function showChat() {
-      document.getElementById("auth").style.display = "none";
-      document.getElementById("chat").style.display = "flex";
-      chatbox.innerHTML = "";
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data } = await supabase.from("lexroid_chats").select("*").eq("user_id", user.id).order("id");
-      data.forEach(msg => appendMessage(msg.role, msg.content));
-    }
+      async function showChat() {
+        document.getElementById("auth").style.display = "none";
+        document.getElementById("chat").style.display = "flex";
+        chatbox.innerHTML = "";
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data } = await supabase.from("lexroid_chats").select("*").eq("user_id", user.id).order("id");
+        data.forEach(msg => appendMessage(msg.role, msg.content));
+      }
 
-    function appendMessage(role, content) {
-      const div = document.createElement("div");
-      div.className = "message " + role;
-      div.innerHTML = "<strong>" + (role === "user" ? "You" : "Lexroid") + ":</strong> " + content;
-      chatbox.appendChild(div);
-      chatbox.scrollTop = chatbox.scrollHeight;
-    }
+      function appendMessage(role, content) {
+        const div = document.createElement("div");
+        div.className = "message " + role;
+        div.innerHTML = "<strong>" + (role === "user" ? "You" : "Lexroid") + ":</strong> " + content;
+        chatbox.appendChild(div);
+        chatbox.scrollTop = chatbox.scrollHeight;
+      }
 
-    async function sendMessage() {
-      const input = document.getElementById("messageInput");
-      const prompt = input.value.trim();
-      if (!prompt) return;
+      async function sendMessage() {
+        const input = document.getElementById("messageInput");
+        const prompt = input.value.trim();
+        if (!prompt) return;
 
-      input.value = "";
-      appendMessage("user", prompt);
+        input.value = "";
+        appendMessage("user", prompt);
 
-      const { data: { user } } = await supabase.auth.getUser();
-      await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "user", content: prompt }]);
-      appendMessage("assistant", "<em>Lexroid is typing...</em>");
+        const { data: { user } } = await supabase.auth.getUser();
+        await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "user", content: prompt }]);
+        appendMessage("assistant", "<em>Lexroid is typing...</em>");
 
-      const res = await fetch(backendURL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt })
+        const res = await fetch(backendURL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt })
+        });
+
+        const json = await res.json();
+        const reply = json.choices?.[0]?.message?.content || "No reply";
+
+        chatbox.lastChild.remove();
+        await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "assistant", content: reply }]);
+        appendMessage("assistant", reply);
+      }
+
+      // Expose functions to HTML button clicks
+      window.login = login;
+      window.logout = logout;
+      window.sendMessage = sendMessage;
+
+      // Restore session if available
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) showChat();
       });
-
-      const json = await res.json();
-      const reply = json.choices?.[0]?.message?.content || "No reply";
-
-      chatbox.lastChild.remove();
-      await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "assistant", content: reply }]);
-      appendMessage("assistant", reply);
-    }
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) showChat();
     });
   </script>
 </body>
