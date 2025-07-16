@@ -6,46 +6,19 @@
   <title>Lexroid Chat - Supabase</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body {
-      background: #111;
-      color: #eee;
-      font-family: sans-serif;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
+    body { background: #111; color: #eee; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
     #auth, #chatbox { padding: 1em; }
     #chatbox { flex: 1; overflow-y: auto; }
     .message { margin: 0.5em 0; white-space: pre-wrap; }
     .user { color: #f49424; text-align: right; }
     .assistant { color: #547cc4; text-align: left; }
-    #inputArea {
-      display: flex;
-      padding: 1em;
-      border-top: 1px solid #333;
-      background: #222;
-    }
-    input, button {
-      font-size: 1em;
-      padding: 0.5em;
-      border: none;
-      outline: none;
-    }
-    input[type="email"], input[type="password"] {
-      margin-bottom: 0.5em;
-      width: 100%;
-    }
+    #inputArea { display: flex; padding: 1em; border-top: 1px solid #333; background: #222; }
+    input, button { font-size: 1em; padding: 0.5em; border: none; outline: none; }
+    input[type="email"], input[type="password"] { margin-bottom: 0.5em; width: 100%; }
     #messageInput { flex: 1; border-radius: 5px 0 0 5px; }
     button { background: #547cc4; color: white; border-radius: 0 5px 5px 0; }
     #logout { margin-top: 1em; background: #f49424; width: 100%; }
-    code, pre {
-      background: #1e1e1e;
-      padding: 0.5em;
-      border-radius: 4px;
-      font-family: monospace;
-      display: block;
-    }
+    code, pre { background: #1e1e1e; padding: 0.5em; border-radius: 4px; font-family: monospace; display: block; }
   </style>
 </head>
 <body>
@@ -66,7 +39,7 @@
   </div>
 
   <script>
-    const supabase = supabase.createClient(
+    const supabase = window.supabase.createClient(
       "https://tuiozcdkswktotyyuhwu.supabase.co",
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1aHd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
     );
@@ -80,10 +53,9 @@
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
-        // try sign up if login failed
         const { error: signupError } = await supabase.auth.signUp({ email, password });
         if (signupError) return alert(signupError.message);
-        alert("Account created. Try logging in again.");
+        alert("Account created. Now log in.");
       } else {
         showChat();
       }
