@@ -9,7 +9,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     body { background: #111; color: #eee; font-family: sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; }
-    #auth, #chatbox { padding: 1em; }
+    #auth, #chat { padding: 1em; }
+    #chat { display: none; flex-direction: column; height: 100%; }
     #chatbox { flex: 1; overflow-y: auto; }
     .message { margin: 0.5em 0; white-space: pre-wrap; }
     .user { color: #f49424; text-align: right; }
@@ -18,9 +19,9 @@
     input, button { font-size: 1em; padding: 0.5em; border: none; outline: none; }
     input[type="email"], input[type="password"] { margin-bottom: 0.5em; width: 100%; }
     #messageInput { flex: 1; border-radius: 5px 0 0 5px; }
-    button { background: #547cc4; color: white; border-radius: 0 5px 5px 0; }
-    #logout { margin-top: 1em; background: #f49424; width: 100%; }
-    code, pre { background: #1e1e1e; padding: 0.5em; border-radius: 4px; font-family: monospace; display: block; }
+    button { background: #547cc4; color: white; border-radius: 0 5px 5px 0; cursor: pointer; }
+    #logout { margin-top: 1em; background: #f49424; width: 100%; cursor: pointer; }
+    #showUserId { background:#f49424; color:#111; margin-top:0.5em; width:100%; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -31,20 +32,21 @@
     <button onclick="login()">Login / Register</button>
   </div>
 
-  <div id="chat" style="display:none; flex-direction:column; height:100%;">
+  <div id="chat">
     <div id="chatbox"></div>
     <div id="inputArea">
       <input id="messageInput" type="text" placeholder="Type a message..." />
       <button onclick="sendMessage()">Send</button>
     </div>
-    <button id="logout" onclick="logout()">Logout</button>
+    <button id="logout">Logout</button>
+    <button id="showUserId">Show My User ID</button>
   </div>
 
   <script>
     window.addEventListener("DOMContentLoaded", function () {
       const supabase = window.supabase.createClient(
         "https://tuiozcdkswktotyyuhwu.supabase.co",
-        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1aHd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
+        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
       );
 
       const backendURL = "https://app-openaiapikey.up.railway.app/api/chat";
@@ -117,6 +119,19 @@
       window.login = login;
       window.logout = logout;
       window.sendMessage = sendMessage;
+
+      // Show user ID button handler
+      document.getElementById("showUserId").addEventListener("click", async () => {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error || !user) {
+          alert("User not logged in or error fetching user ID.");
+        } else {
+          alert("Your Supabase user ID is:\n" + user.id);
+        }
+      });
+
+      // Logout button handler
+      document.getElementById("logout").addEventListener("click", logout);
 
       // Restore session if available
       supabase.auth.getSession().then(({ data: { session } }) => {
