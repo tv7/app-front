@@ -2,74 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Lexroid Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lexroid Chat - Supabase</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    body { font-family: sans-serif; background-color: #121212; color: #f0f0f0; padding: 1rem; max-width: 600px; margin: auto; }
-    h1 { color: #f49424; }
-    textarea { width: 100%; height: 100px; background: #1e1e1e; color: white; border: 1px solid #547cc4; padding: 0.5rem; border-radius: 8px; }
-    button { margin-top: 0.5rem; padding: 0.7rem 1.5rem; background: #547cc4; border: none; color: white; border-radius: 8px; cursor: pointer; }
-    #controls { display: flex; gap: 1rem; flex-wrap: wrap; }
-    pre { background: #1e1e1e; padding: 1rem; border-radius: 8px; border: 1px solid #333; white-space: pre-wrap; word-wrap: break-word; }
-    .mic-button { background-color: #f49424; }
+    body {
+      background: #111;
+      color: #eee;
+      font-family: sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    #auth, #chatbox { padding: 1em; }
+    #chatbox { flex: 1; overflow-y: auto; }
+    .message { margin: 0.5em 0; white-space: pre-wrap; }
+    .user { color: #f49424; text-align: right; }
+    .assistant { color: #547cc4; text-align: left; }
+    #inputArea {
+      display: flex;
+      padding: 1em;
+      border-top: 1px solid #333;
+      background: #222;
+    }
+    input, button {
+      font-size: 1em;
+      padding: 0.5em;
+      border: none;
+      outline: none;
+    }
+    input[type="email"], input[type="password"] {
+      margin-bottom: 0.5em;
+      width: 100%;
+    }
+    #messageInput { flex: 1; border-radius: 5px 0 0 5px; }
+    button { background: #547cc4; color: white; border-radius: 0 5px 5px 0; }
+    #logout { margin-top: 1em; background: #f49424; width: 100%; }
+    code, pre {
+      background: #1e1e1e;
+      padding: 0.5em;
+      border-radius: 4px;
+      font-family: monospace;
+      display: block;
+    }
   </style>
 </head>
 <body>
-  <h1>Lexroid Chat</h1>
-  <textarea id="userInput" placeholder="Ask Lexroid anything..."></textarea>
-  <div id="controls">
-    <button onclick="sendMessage()">Send</button>
-    <button class="mic-button" onclick="startVoiceInput()">🎤 Voice</button>
+  <div id="auth">
+    <h2>Login to Lexroid</h2>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="login()">Login / Register</button>
   </div>
-  <pre id="response">Response will appear here...</pre>
+
+  <div id="chat" style="display:none; flex-direction:column; height:100%;">
+    <div id="chatbox"></div>
+    <div id="inputArea">
+      <input id="messageInput" type="text" placeholder="Type a message..." />
+      <button onclick="sendMessage()">Send</button>
+    </div>
+    <button id="logout" onclick="logout()">Logout</button>
+  </div>
 
   <script>
-   async function sendMessage() {
-  const userInput = document.getElementById('userInput').value;
-  const responseBox = document.getElementById('response');
-  if (!userInput) return alert("Enter a message first.");
+    const supabase = supabase.createClient(
+      "https://tuiozcdkswktotyyuhwu.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1aW96Y2Rrc3drdG90eXl1aHd1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI2NDE2NjYsImV4cCI6MjA2ODIxNzY2Nn0.D-aYkEQdr_yZU8wDpLtW5jWdY8dPRXNWJxkGW9xe7eU"
+    );
 
-  responseBox.textContent = "Thinking...";
+    const backendURL = "https://app-openaiapikey.up.railway.app/api/chat";
+    const chatbox = document.getElementById("chatbox");
 
-  try {
-    const res = await fetch('https://app-openaiapikey.up.railway.app/api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: userInput }),
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        // try sign up if login failed
+        const { error: signupError } = await supabase.auth.signUp({ email, password });
+        if (signupError) return alert(signupError.message);
+        alert("Account created. Try logging in again.");
+      } else {
+        showChat();
+      }
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      document.getElementById("chat").style.display = "none";
+      document.getElementById("auth").style.display = "block";
+    }
+
+    async function showChat() {
+      document.getElementById("auth").style.display = "none";
+      document.getElementById("chat").style.display = "flex";
+      chatbox.innerHTML = "";
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data } = await supabase.from("lexroid_chats").select("*").eq("user_id", user.id).order("id");
+      data.forEach(msg => appendMessage(msg.role, msg.content));
+    }
+
+    function appendMessage(role, content) {
+      const div = document.createElement("div");
+      div.className = "message " + role;
+      div.innerHTML = "<strong>" + (role === "user" ? "You" : "Lexroid") + ":</strong> " + content;
+      chatbox.appendChild(div);
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const prompt = input.value.trim();
+      if (!prompt) return;
+
+      input.value = "";
+      appendMessage("user", prompt);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "user", content: prompt }]);
+      appendMessage("assistant", "<em>Lexroid is typing...</em>");
+
+      const res = await fetch(backendURL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt })
+      });
+
+      const json = await res.json();
+      const reply = json.choices?.[0]?.message?.content || "No reply";
+
+      chatbox.lastChild.remove();
+      await supabase.from("lexroid_chats").insert([{ user_id: user.id, role: "assistant", content: reply }]);
+      appendMessage("assistant", reply);
+    }
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) showChat();
     });
-
-    if (!res.ok) throw new Error("HTTP " + res.status);
-
-    const data = await res.json();
-
-    if (data.choices && data.choices.length > 0) {
-      responseBox.textContent = data.choices[0].message.content;
-    } else if (data.error) {
-      responseBox.textContent = "API error: " + data.error.message || data.error;
-    } else {
-      responseBox.textContent = "No response from API.";
-    }
-  } catch (err) {
-    responseBox.textContent = "❌ Error: " + err.message;
-  }
-}
-
-
-    function startVoiceInput() {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) return alert("Voice input not supported.");
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'en-US';
-      recognition.interimResults = false;
-      recognition.maxAlternatives = 1;
-      recognition.start();
-      recognition.onresult = e => {
-        const transcript = e.results[0][0].transcript;
-        const textarea = document.getElementById('userInput');
-        textarea.value += (textarea.value ? ' ' : '') + transcript;
-      };
-      recognition.onerror = e => alert("Voice input error: " + e.error);
-    }
   </script>
 </body>
 </html>
